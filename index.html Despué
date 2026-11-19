@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diseñador Futsal</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101827;color:white;font-family:Arial,sans-serif}
+header{padding:16px;text-align:center;background:#17243a}
+h1{margin:0;font-size:23px}
+header p{color:#aebbd0;margin:6px 0 0;font-size:13px}
+main{padding:12px;max-width:700px;margin:auto}
+.toolbar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+button{background:#263c5c;color:white;border:1px solid #486080;border-radius:9px;padding:11px 13px;font-weight:bold}
+button:active{background:#3979bb}
+#status{font-size:13px;color:#b7c9dc;margin:8px 0}
+svg{width:100%;height:auto;background:#16834d;border-radius:12px;touch-action:none}
+.line{fill:none;stroke:white;stroke-width:4}
+.player{cursor:grab;touch-action:none}
+.player circle{stroke:white;stroke-width:3}
+.player text{fill:white;font-size:22px;font-weight:bold;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
+.ball{fill:white;stroke:#111;stroke-width:2;cursor:grab}
+footer{text-align:center;color:#9eacc1;padding:15px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>⚽ DISEÑADOR FUTSAL</h1>
+<p>Tablero táctico profesional</p>
+</header>
+<main>
+<div class="toolbar">
+<button onclick="addPlayer('blue')">+ Mi equipo</button>
+<button onclick="addPlayer('red')">+ Rival</button>
+<button onclick="addBall()">⚽ Pelota</button>
+<button onclick="animatePlay()">▶ Animar ataque</button>
+<button onclick="resetPlay()">↺ Reiniciar</button>
+</div>
+<div id="status">Arrastrá los jugadores y la pelota por la cancha.</div>
+<svg id="court" viewBox="0 0 700 1000">
+<rect x="15" y="15" width="670" height="970" rx="5" fill="#16834d" stroke="white" stroke-width="5"/>
+<path class="line" d="M15 500 H685"/>
+<circle class="line" cx="350" cy="500" r="100"/>
+<circle cx="350" cy="500" r="7" fill="white"/>
+<rect class="line" x="190" y="15" width="320" height="145"/>
+<rect class="line" x="190" y="840" width="320" height="145"/>
+<path class="line" d="M270 160 A80 80 0 0 0 430 160"/>
+<path class="line" d="M270 840 A80 80 0 0 1 430 840"/>
+<rect x="275" y="0" width="150" height="15" fill="#eee"/>
+<rect x="275" y="985" width="150" height="15" fill="#eee"/>
+<circle cx="350" cy="90" r="7" fill="white"/>
+<circle cx="350" cy="910" r="7" fill="white"/>
+<g id="players"></g>
+<g id="balls"></g>
+</svg>
+</main>
+<footer>Diseñado para entrenadores de futsal</footer>
+<script>
+const svg=document.getElementById('court');
+const players=document.getElementById('players');
+const balls=document.getElementById('balls');
+let blue=1,red=1,ballCount=0;
+let selected=null;
+
+function addPlayer(team){
+ const n=team==='blue'?blue++:red++;
+ const x=team==='blue'?250+(n%2)*200:250+(n%2)*200;
+ const y=team==='blue'?700-n*65:250+n*65;
+ const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+ g.setAttribute('class','player');
+ g.dataset.x=x;g.dataset.y=y;
+ g.innerHTML=`<circle r="27" cx="0" cy="0" fill="${team==='blue'?'#1675ed':'#dc3434'}"/><text x="0" y="1">${n}</text>`;
+ players.appendChild(g);
+ position(g,x,y);
+ makeDraggable(g);
+}
+
+function position(g,x,y){
+ g.dataset.x=x;g.dataset.y=y;
+ g.setAttribute('transform',`translate(${x} ${y})`);
+}
+
+function addBall(){
+ const b=document.createElementNS('http://www.w3.org/2000/svg','circle');
+ b.setAttribute('r','15');b.setAttribute('class','ball');
+ b.dataset.x=350;b.dataset.y=500;
+ balls.appendChild(b);
+ positionBall(b,350,500);
+ makeDraggable(b);
+ ballCount++;
+}
+
+function positionBall(b,x,y){
+ b.dataset.x=x;b.dataset.y=y;
+ b.setAttribute('cx',x);b.setAttribute('cy',y);
+}
+
+function makeDraggable(el){
+ el.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  selected=el;
+  el.setPointerCapture(e.pointerId);
+ });
+ el.addEventListener('pointermove',e=>{
+  if(selected!==el)return;
+  const p=svg.createSVGPoint();
+  p.x=e.clientX;p.y=e.clientY;
+  const q=p.matrixTransform(svg.getScreenCTM().inverse());
+  const x=Math.max(35,Math.min(665,q.x));
+  const y=Math.max(35,Math.min(965,q.y));
+  if(el.classList.contains('ball'))positionBall(el,x,y);
+  else position(el,x,y);
+ });
+ el.addEventListener('pointerup',()=>selected=null);
+ el.addEventListener('pointercancel',()=>selected=null);
+}
+
+function animatePlay(){
+ const list=[...players.children];
+ if(!list.length){alert('Primero agregá jugadores');return;}
+ list.filter(g=>g.children[0].getAttribute('fill')==='#1675ed')
+ .forEach((g,i)=>{
+  const x=350+(i%2===0?-75:75);
+  const y=Math.max(180,Number(g.dataset.y)-180);
+  position(g,x,y);
+ });
+ document.getElementById('status').textContent='¡Ataque en movimiento! Arrastrá los jugadores para ajustar la jugada.';
+}
+
+function resetPlay(){
+ players.innerHTML='';
+ balls.innerHTML='';
+ blue=1;red=1;ballCount=0;
+ document.getElementById('status').textContent='Cancha reiniciada. Armá una nueva jugada.';
+}
+addPlayer('blue');
+addPlayer('blue');
+addPlayer('blue');
+addPlayer('blue');
+addPlayer('blue');
+addPlayer('red');
+addPlayer('red');
+addPlayer('red');
+addPlayer('red');
+addPlayer('red');
+addBall();
+</script>
+</body>
+</html>
